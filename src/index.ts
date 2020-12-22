@@ -5,6 +5,8 @@ import App from './app';
 
 process.on('uncaughtException', ex => MRE.log.error('app', "Uncaught exception: " + ex));
 process.on('unhandledRejection', ex => MRE.log.error('app', "Unhandled rejection: " + ex));
+process.on('SIGTERM', () => process.exit(0));
+process.on('SIGABRT', () => process.exit(0));
 
 const webhost = new MRE.WebHost({
 	baseDir: resolve(__dirname, '..', 'public'),
