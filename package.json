@@ -1,0 +1,17 @@
+{
+  "name": "dnd-mre",
+  "version": "1.0.0",
+  "description": "",
+  "main": "built/index.js",
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "author": "Steven Vergenz",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "@microsoft/mixed-reality-extension-sdk": "^0.20.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.3"
+  }
+}
