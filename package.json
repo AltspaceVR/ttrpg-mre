@@ -4,7 +4,8 @@
   "description": "",
   "main": "built/index.js",
   "scripts": {
-    "build": "tsc --build"
+		"build": "tsc --build",
+		"start": "node ."
   },
   "author": "Steven Vergenz",
   "license": "GPL-3.0-or-later",

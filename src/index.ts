@@ -8,7 +8,7 @@ process.on('unhandledRejection', ex => MRE.log.error('app', "Unhandled rejection
 
 const webhost = new MRE.WebHost({
 	baseDir: resolve(__dirname, '..', 'public'),
-	optionalPermissions: [ MRE.Permissions.UserInteraction ]
+	optionalPermissions: [ MRE.Permissions.UserTracking, MRE.Permissions.UserInteraction ]
 });
 
 webhost.adapter.onConnection((context, params) => new App(context, params));
