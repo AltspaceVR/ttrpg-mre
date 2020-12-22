@@ -1,4 +1,5 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
+import { Die, DieType } from './die';
 
 export default class App {
 	private diceAssets: MRE.AssetContainer;
@@ -11,22 +12,14 @@ export default class App {
 	}
 
 	private async onStarted() {
-		this.diceAssets = new MRE.AssetContainer(this.context);
-		await this.diceAssets.loadGltf('./dice.glb');
-
 		let x = 0;
-
-		for (let i = 0; i < this.diceAssets.prefabs.length; i++) {
-			const prefab = this.diceAssets.prefabs[i];
-			MRE.Actor.CreateFromPrefab(this.context, {
-				prefab,
+		for (const type of Object.values(DieType)) {
+			new Die({
+				app: this,
+				type,
+				label: type,
 				actor: {
-					transform: {
-						local: {
-							position: { x },
-							scale: { x: 0.1, y: 0.1, z: 0.1 }
-						}
-					}
+					transform: { local: { position: { x }}}
 				}
 			});
 			x += 0.15;
