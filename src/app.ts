@@ -1,8 +1,11 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 import { cleanUpSession } from './assets';
 import { Die, DieType } from './die';
+import { RollManager } from './rollManager';
 
 export default class App {
+	public rollManager: RollManager;
+
 	constructor(public context: MRE.Context, public params: MRE.ParameterSet) {
 		context.onStarted(() => this.onStarted());
 		context.onUserJoined(user => this.onUserJoined(user));
@@ -11,18 +14,7 @@ export default class App {
 	}
 
 	private async onStarted() {
-		let x = 0;
-		for (const type of Object.values(DieType)) {
-			new Die({
-				app: this,
-				type,
-				label: type,
-				actor: {
-					transform: { local: { position: { x }}}
-				}
-			});
-			x += 0.11;
-		}
+
 	}
 
 	private onStopped() {
@@ -30,7 +22,7 @@ export default class App {
 	}
 
 	private onUserJoined(user: MRE.User) {
-
+		this.rollManager = new RollManager(this);
 	}
 
 	private onUserLeft(user: MRE.User) {

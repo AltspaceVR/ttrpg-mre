@@ -21,7 +21,7 @@ const assetMap: { [name: string]: string | AssetBuilder } = {
 		container: './dice.glb',
 		builder: async (ac) => {
 			const d10mat = (await getAsset(ac.context, 'd10mat')).material;
-			ac.createMaterial('d100mat', d10mat);
+			ac.createMaterial('d100mat', d10mat.toJSON().material);
 		}
 	}
 };
@@ -58,7 +58,7 @@ export async function getAsset(context: MRE.Context, name: string): Promise<MRE.
 		// see if asset is ready
 		asset = ac.assets.find(a => a.name === name);
 
-		// if not, load/build
+		// if not, load
 		if (!asset) {
 			try {
 				await ac.loadGltf(assetMap[name] as string);
@@ -90,7 +90,7 @@ export async function getAsset(context: MRE.Context, name: string): Promise<MRE.
 			}
 		}
 	}
-	
+
 	// fail if the load/build didn't create the needed asset
 	if (!asset) {
 		asset = ac.assets.find(a => a.name === name)

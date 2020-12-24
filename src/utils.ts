@@ -6,5 +6,5 @@
  */
 export function textHeightForWidth(text: string, desiredWidth: number, maximumHeight = 1) {
 	const heightWidthRatio = 1.4; // assumed
-	return Math.min(maximumHeight, heightWidthRatio * desiredWidth / text.length);
+	return Math.min(maximumHeight, heightWidthRatio * desiredWidth / (text?.length ?? 1));
 }

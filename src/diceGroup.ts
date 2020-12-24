@@ -121,4 +121,8 @@ export class DiceGroup {
 			default:           return 0;
 		}
 	}
+
+	public toString(): string {
+		return this.count + this.type;
+	}
 }

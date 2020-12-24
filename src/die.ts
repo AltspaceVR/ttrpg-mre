@@ -14,20 +14,27 @@ export enum DieType {
 	D100 = 'd100'
 }
 
-export type DieOptions = {
+export type DieConstructorOptions = {
 	app: App,
 	type: DieType,
-	label: string,
+	text?: string,
 	actor?: Partial<MRE.ActorLike>
 }
 
+/** Representation of an individual die. 10cm in diameter by default. */
 export class Die {
 	private app: App;
-	private type: DieType;
+	private _type: DieType;
 	private _root: MRE.Actor;
 	private _label: MRE.Actor;
+	private _model: MRE.Actor;
+
+	private clickHandlers = new Set<MRE.ActionHandler<MRE.ButtonEventData>>();
+	private ogScale: MRE.Vector3;
+	private hoverScale: MRE.Vector3;
 
 	public get root() { return this._root; }
+	public get type() { return this._type; }
 
 	public get text() { return this._label.text.contents; }
 	public set text(value) {
@@ -35,13 +42,19 @@ export class Die {
 		this._label.text.height = textHeightForWidth(value, 0.08, 0.05);
 	}
 
-	constructor(options: DieOptions) {
+	public get textColor() { return this._label.text.color; }
+	public set textColor(value) {
+		this._label.text.color = value;
+	}
+
+	constructor(options: DieConstructorOptions) {
 		this.app = options.app;
-		this.type = options.type;
+		this._type = options.type;
 
 		this._root = MRE.Actor.Create(this.app.context, { actor: {
+			name: this.type,
 			...options.actor,
-			collider: { geometry: { shape: MRE.ColliderType.Sphere, radius: 0.1 }}
+			collider: { geometry: { shape: MRE.ColliderType.Sphere, radius: 0.05 }}
 		}});
 		const labelSwivel = MRE.Actor.Create(this.app.context, { actor: {
 			name: "LabelSwivel",
@@ -55,11 +68,15 @@ export class Die {
 			text: {
 				justify: MRE.TextJustify.Center,
 				anchor: MRE.TextAnchorLocation.MiddleCenter,
-				color: MRE.Color3.Red(),
-				contents: options.label,
-				height: textHeightForWidth(options.label, 0.08, 0.05)
+				contents: options.text,
+				height: textHeightForWidth(options.text, 0.08, 0.05)
 			}
 		}});
+
+		this._root.setBehavior(MRE.ButtonBehavior)
+			.onHover('enter', user => this.onHover(user))
+			.onHover('exit', user => this.offHover(user))
+			.onButton('pressed', (user, data) => this.internalOnClick(user, data));
 
 		// load model
 		let modelType = this.type;
@@ -67,10 +84,9 @@ export class Die {
 			modelType = DieType.D10;
 		}
 
-		let model: MRE.Actor;
 		getAsset(this.app.context, modelType)
 		.then(asset => {
-			model = MRE.Actor.CreateFromPrefab(this.app.context, {
+			this._model = MRE.Actor.CreateFromPrefab(this.app.context, {
 				prefab: asset.prefab,
 				actor: {
 					name: "Model",
@@ -78,18 +94,57 @@ export class Die {
 					transform: { local: { scale: { x: 0.1, y: 0.1, z: 0.1 }}}
 				}
 			});
-			return model.created();
+			return this._model.created();
 		})
 		.then(() => {
-			if (modelType === DieType.D100) {
+			if (this.type === DieType.D100) {
 				return getAsset(this.app.context, 'd100mat');
 			} else {
-				return Promise.resolve(model.children[0].appearance.material);
+				return Promise.resolve(this._model.children[0].appearance.material);
 			}
 		})
 		.then(asset => {
-			model.children[0].appearance.material = asset.material;
+			this._model.children[0].appearance.material = asset.material;
+
+			this.ogScale = this._model.transform.local.scale.clone();
+
+			const hoverFactor = 1.1;
+			this.hoverScale = new MRE.Vector3(
+				this.ogScale.x * hoverFactor,
+				this.ogScale.y * hoverFactor,
+				this.ogScale.z * hoverFactor);
 		})
 		.catch(err => MRE.log.error('app', err));
+	}
+
+	public onClick(handler: MRE.ActionHandler<MRE.ButtonEventData>) {
+		this.clickHandlers.add(handler);
+	}
+
+	public offClick(handler: MRE.ActionHandler<MRE.ButtonEventData>) {
+		this.clickHandlers.delete(handler);
+	}
+
+	private onHover(user: MRE.User) {
+		if (!this._model) return;
+
+		// TODO: make this a material tint instead of scale (bugged)
+		if (this.clickHandlers.size > 0) {
+			this._model.transform.local.scale = this.hoverScale;
+		} else {
+			this._model.transform.local.scale = this.ogScale;
+		}
+	}
+
+	private offHover(user: MRE.User) {
+		if (!this._model) return;
+
+		this._model.transform.local.scale = this.ogScale;
+	}
+
+	private internalOnClick(user: MRE.User, data: MRE.ButtonEventData) {
+		for (const handler of this.clickHandlers) {
+			handler(user, data);
+		}
 	}
 }
