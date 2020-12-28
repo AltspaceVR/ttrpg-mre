@@ -114,13 +114,22 @@ export class RollManager {
 			for (let i = 0; i < dg.count; i++) {
 				const reusedDieIndex = oldDice.findIndex(d => d.type === dg.type);
 				let d: Die;
+
+				// reuse old die
 				if (reusedDieIndex >= 0) {
 					d = oldDice.splice(reusedDieIndex, 1)[0];
-				} else {
+				// add a new die (unless constant)
+				} else if (dg.type !== DieType.D1 || i === 0){
 					d = new Die({
-						app: this.app, type: dg.type,
+						app: this.app, type: dg.type, text: dg.type,
 						actor: { parentId: this.activeRollRoot.id }
 					});
+				} else {
+					break;
+				}
+
+				if (dg.type === DieType.D1) {
+					d.text = '+' + dg.count;
 				}
 
 				this.activeRollDisplay.push(d);
@@ -143,24 +152,31 @@ export class RollManager {
 			dg.roll();
 			for (let i = 0; i < dg.results.length; i++) {
 				const d = dice.splice(0, 1)[0];
-				d.text = dg.results[i].toString();
-				d.textColor = dg.contributingResults.includes(i) ? MRE.Color3.White() : MRE.Color3.Gray();
+				if (dg.type === DieType.D1) {
+					d.text = '+' + dg.count;
+					d.textColor = MRE.Color3.White();
+					break;
+				} else {
+					d.text = dg.results[i].toString();
+					d.textColor = dg.contributingResults.includes(i) ? MRE.Color3.White() : MRE.Color3.Gray();
+				}
 			}
 			total += dg.total;
 		}
 		this.rollResults.text.contents = '= ' + total;
 
 		this.rollHistory.push(this.activeRoll);
-		this.activeRoll = this.activeRoll.map(dg => new DiceGroup(dg));
+		//this.activeRoll = this.activeRoll.map(dg => new DiceGroup(dg));
+		this.activeRoll = [];
 		this.refreshActiveRollDisplay();
 	}
 
 	private static sortDiceGroups(a: DiceGroup, b: DiceGroup) {
 		const rankings = Object.values(DieType);
 		const aRank = rankings.indexOf(a.type), bRank = rankings.indexOf(b.type);
-		if (bRank < aRank) {
+		if (aRank < bRank) {
 			return -1;
-		} else if (bRank > aRank) {
+		} else if (aRank > bRank) {
 			return 1;
 		} else {
 			return 0;
