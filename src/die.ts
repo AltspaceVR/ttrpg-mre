@@ -100,7 +100,7 @@ export class Die extends EventEmitter {
 				}
 			});
 
-			this.dropTarget = MRE.Actor.Create(this.app.context, { actor: {
+			/*this.dropTarget = MRE.Actor.Create(this.app.context, { actor: {
 				name: "DropTarget",
 				parentId: this.root.id,
 				transform: { local: { position: { y: 0.1 }}},
@@ -109,7 +109,7 @@ export class Die extends EventEmitter {
 			this.dropTarget.setBehavior(MRE.ButtonBehavior)
 				.onHover('enter', u => this.emit('dropHover', u))
 				.onButton('pressed', u => this.emit('dropDown', u))
-				.onButton('released', u => this.emit('dropUp', u));
+				.onButton('released', u => this.emit('dropUp', u));*/
 
 			return this.model.created();
 		})
