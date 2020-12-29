@@ -1,10 +1,10 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
-import { cleanUpSession } from './assets';
+import { cleanUpSession as cleanUpAssets } from './assets';
 import { Die, DieType } from './die';
-import { RollManager } from './rollManager';
+import { RollController } from './rollController';
 
 export default class App {
-	public rollManager: RollManager;
+	public rollManager: RollController;
 
 	constructor(public context: MRE.Context, public params: MRE.ParameterSet) {
 		context.onStarted(() => this.onStarted());
@@ -18,11 +18,11 @@ export default class App {
 	}
 
 	private onStopped() {
-		cleanUpSession(this.context);
+		cleanUpAssets(this.context);
 	}
 
 	private onUserJoined(user: MRE.User) {
-		this.rollManager = new RollManager(this);
+		this.rollManager = new RollController(this);
 	}
 
 	private onUserLeft(user: MRE.User) {

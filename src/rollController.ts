@@ -1,20 +1,22 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
+
 import { Die, DieType } from './die';
 import { DiceGroup } from './diceGroup';
+import { DropController } from './dropController';
 import App from './app';
 
 /** Display, form, and roll a collection of dice. */
-export class RollManager {
+export class RollController {
 	private _root: MRE.Actor;
 	public get root() { return this._root; }
 
 	private activeRoll: DiceGroup[] = [];
-	private activeRollRoot: MRE.Actor;
-	private activeRollDisplay: Die[] = [];
+
+	private rollRoot: MRE.Actor;
+	private rollDisplay: Die[] = [];
+	private dropControllers = new Map<DieType, DropController>();
 	private rollResults: MRE.Actor;
 	private rollButton: MRE.Actor;
-
-	private rollHistory: Array<DiceGroup[]> = [];
 
 	private dieSelectorRoot: MRE.Actor;
 	private dieSelectors: Die[] = [];
@@ -45,15 +47,15 @@ export class RollManager {
 			selectorLayout.addCell({ row: 0, column: x++, width: 0.1, height: 0.1, contents: die.root });
 
 			// wire up the click handler
-			die.onClick(() => this.addDie(type));
+			die.on('click', () => this.addDie(type));
 		}
 		selectorLayout.applyLayout();
 	}
 
 	private addDie(die: DieType) {
-		const dg = this.activeRoll.find(dg => dg.type === die);
+		let dg = this.activeRoll.find(dg => dg.type === die);
 		if (!dg) {
-			this.activeRoll.push(new DiceGroup(die, 1, 0, 0));
+			this.activeRoll.push(dg = new DiceGroup(die, 1, 0, 0));
 		} else {
 			dg.count++;
 		}
@@ -62,8 +64,8 @@ export class RollManager {
 	}
 
 	private refreshActiveRollDisplay() {
-		if (!this.activeRollRoot) {
-			this.activeRollRoot = MRE.Actor.Create(this.app.context, { actor: {
+		if (!this.rollRoot) {
+			this.rollRoot = MRE.Actor.Create(this.app.context, { actor: {
 				name: "ActiveRollRoot",
 				parentId: this.root.id,
 				transform: { local: { position: { y: 0.1 }}}
@@ -73,8 +75,9 @@ export class RollManager {
 		if (!this.rollButton) {
 			this.rollButton = MRE.Actor.Create(this.app.context, { actor: {
 				name: "RollButton",
-				parentId: this.activeRollRoot.id,
+				parentId: this.rollRoot.id,
 				text: {
+					enabled: this.activeRoll.length > 0,
 					contents: "ROLL",
 					height: 0.05,
 					anchor: MRE.TextAnchorLocation.MiddleCenter,
@@ -85,32 +88,41 @@ export class RollManager {
 				}
 			}});
 			this.rollButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', () => this.roll());
+		} else {
+			this.rollButton.text.enabled = this.activeRoll.length > 0;
 		}
 
+		const rollTotal = this.activeRoll.reduce((sum, dg) => sum + (dg.hasRollResults ? dg.total : 0), 0);
 		if (!this.rollResults) {
 			this.rollResults = MRE.Actor.Create(this.app.context, { actor: {
 				name: "RollResults",
-				parentId: this.activeRollRoot.id,
+				parentId: this.rollRoot.id,
 				text: {
-					contents: "= ??",
+					contents: rollTotal > 0 ? `= ${rollTotal}` : "= ??",
 					height: 0.05,
 					anchor: MRE.TextAnchorLocation.MiddleCenter,
 					justify: MRE.TextJustify.Center
 				}
 			}});
+		} else {
+			this.rollResults.text.contents = rollTotal > 0 ? `= ${rollTotal}` : "= ??";
 		}
 
-		const oldDice = this.activeRollDisplay;
-		this.activeRollDisplay = [];
+		const oldDice = this.rollDisplay;
+		this.rollDisplay = [];
 
-		const layout = new MRE.PlanarGridLayout(this.activeRollRoot,
+		const layout = new MRE.PlanarGridLayout(this.rollRoot,
 			MRE.BoxAlignment.MiddleCenter, MRE.BoxAlignment.MiddleCenter);
 		layout.addCell({ row: 0, column: 0, width: 0.2, height: 0.1, contents: this.rollButton });
 
 		let x = 1;
 
-		this.activeRoll.sort(RollManager.sortDiceGroups);
+		this.activeRoll.sort(sortDiceGroups);
 		for (const dg of this.activeRoll) {
+			if (dg.type !== DieType.D1 && !this.dropControllers.has(dg.type)) {
+				this.dropControllers.set(dg.type, new DropController(this.app, dg, this.rollRoot));
+			}
+
 			for (let i = 0; i < dg.count; i++) {
 				const reusedDieIndex = oldDice.findIndex(d => d.type === dg.type);
 				let d: Die;
@@ -122,7 +134,11 @@ export class RollManager {
 				} else if (dg.type !== DieType.D1 || i === 0){
 					d = new Die({
 						app: this.app, type: dg.type, text: dg.type,
-						actor: { parentId: this.activeRollRoot.id }
+						actor: { parentId: this.rollRoot.id }
+					});
+					d.on('click', () => {
+						dg.count = Math.max(0, dg.count - 1);
+						this.refreshActiveRollDisplay();
 					});
 				} else {
 					break;
@@ -130,9 +146,11 @@ export class RollManager {
 
 				if (dg.type === DieType.D1) {
 					d.text = '+' + dg.count;
+				} else {
+					this.dropControllers.get(dg.type).addDice(d);
 				}
 
-				this.activeRollDisplay.push(d);
+				this.rollDisplay.push(d);
 				layout.addCell({ row: 0, column: x++, width: 0.1, height: 0.1, contents: d.root });
 			}
 		}
@@ -140,14 +158,17 @@ export class RollManager {
 		layout.addCell({ row: 0, column: x++, width: 0.2, height: 0.1, contents: this.rollResults });
 		layout.applyLayout();
 
+		for (const dc of this.dropControllers.values()) {
+			dc.update();
+		}
+
 		for (const d of oldDice) {
 			d.root.destroy();
 		}
 	}
 
 	private roll() {
-		const dice = [...this.activeRollDisplay];
-		let total = 0;
+		const dice = [...this.rollDisplay];
 		for (const dg of this.activeRoll) {
 			dg.roll();
 			for (let i = 0; i < dg.results.length; i++) {
@@ -161,25 +182,23 @@ export class RollManager {
 					d.textColor = dg.contributingResults.includes(i) ? MRE.Color3.White() : MRE.Color3.Gray();
 				}
 			}
-			total += dg.total;
 		}
-		this.rollResults.text.contents = '= ' + total;
 
-		this.rollHistory.push(this.activeRoll);
+		//this.rollHistory.push(this.activeRoll);
 		//this.activeRoll = this.activeRoll.map(dg => new DiceGroup(dg));
-		this.activeRoll = [];
+		//this.activeRoll = [];
 		this.refreshActiveRollDisplay();
 	}
+}
 
-	private static sortDiceGroups(a: DiceGroup, b: DiceGroup) {
-		const rankings = Object.values(DieType);
-		const aRank = rankings.indexOf(a.type), bRank = rankings.indexOf(b.type);
-		if (aRank < bRank) {
-			return -1;
-		} else if (aRank > bRank) {
-			return 1;
-		} else {
-			return 0;
-		}
+function sortDiceGroups(a: DiceGroup, b: DiceGroup) {
+	const rankings = Object.values(DieType);
+	const aRank = rankings.indexOf(a.type), bRank = rankings.indexOf(b.type);
+	if (aRank < bRank) {
+		return -1;
+	} else if (aRank > bRank) {
+		return 1;
+	} else {
+		return 0;
 	}
 }

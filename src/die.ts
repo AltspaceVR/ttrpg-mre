@@ -1,4 +1,6 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
+import { EventEmitter } from 'events';
+
 import App from './app';
 import { getAsset } from './assets';
 import { textHeightForWidth } from './utils';
@@ -22,20 +24,21 @@ export type DieConstructorOptions = {
 }
 
 /** Representation of an individual die. 10cm in diameter by default. */
-export class Die {
+export class Die extends EventEmitter {
 	private app: App;
-	private _type: DieType;
-	private _root: MRE.Actor;
-	private _label: MRE.Actor;
-	private _model: MRE.Actor;
+	private model: MRE.Actor;
+	private dropTarget: MRE.Actor;
 
-	private clickHandlers = new Set<MRE.ActionHandler<MRE.ButtonEventData>>();
 	private ogScale: MRE.Vector3;
 	private hoverScale: MRE.Vector3;
 
+	private _root: MRE.Actor;
 	public get root() { return this._root; }
+
+	private _type: DieType;
 	public get type() { return this._type; }
 
+	private _label: MRE.Actor;
 	public get text() { return this._label.text.contents; }
 	public set text(value) {
 		this._label.text.contents = value;
@@ -48,6 +51,8 @@ export class Die {
 	}
 
 	constructor(options: DieConstructorOptions) {
+		super();
+
 		this.app = options.app;
 		this._type = options.type;
 
@@ -76,7 +81,7 @@ export class Die {
 		this._root.setBehavior(MRE.ButtonBehavior)
 			.onHover('enter', user => this.onHover(user))
 			.onHover('exit', user => this.offHover(user))
-			.onButton('pressed', (user, data) => this.internalOnClick(user, data));
+			.onButton('pressed', (user, data) => this.emit('click', user, data));
 
 		// load model
 		let modelType = this.type;
@@ -85,29 +90,31 @@ export class Die {
 		}
 
 		getAsset(this.app.context, modelType)
-		.then(asset => {
-			this._model = MRE.Actor.CreateFromPrefab(this.app.context, {
-				prefab: asset.prefab,
+		.then(modelAsset => {
+			this.model = MRE.Actor.CreateFromPrefab(this.app.context, {
+				prefab: modelAsset.prefab,
 				actor: {
 					name: "Model",
 					parentId: this.root.id,
 					transform: { local: { scale: { x: 0.1, y: 0.1, z: 0.1 }}}
 				}
 			});
-			return this._model.created();
+
+			this.dropTarget = MRE.Actor.Create(this.app.context, { actor: {
+				name: "DropTarget",
+				parentId: this.root.id,
+				transform: { local: { position: { y: 0.1 }}},
+				collider: { geometry: { shape: MRE.ColliderType.Box, size: { x: 0.1, y: 0.1, z: 0.01 }}}
+			}});
+			this.dropTarget.setBehavior(MRE.ButtonBehavior)
+				.onHover('enter', u => this.emit('dropHover', u))
+				.onButton('pressed', u => this.emit('dropDown', u))
+				.onButton('released', u => this.emit('dropUp', u));
+
+			return this.model.created();
 		})
 		.then(() => {
-			if (this.type === DieType.D100) {
-				return getAsset(this.app.context, 'd100mat');
-			} else {
-				return Promise.resolve(this._model.children[0].appearance.material);
-			}
-		})
-		.then(asset => {
-			this._model.children[0].appearance.material = asset.material;
-
-			this.ogScale = this._model.transform.local.scale.clone();
-
+			this.ogScale = this.model.transform.local.scale.clone();
 			const hoverFactor = 1.1;
 			this.hoverScale = new MRE.Vector3(
 				this.ogScale.x * hoverFactor,
@@ -117,34 +124,35 @@ export class Die {
 		.catch(err => MRE.log.error('app', err));
 	}
 
-	public onClick(handler: MRE.ActionHandler<MRE.ButtonEventData>) {
-		this.clickHandlers.add(handler);
+	public on(event: 'click', handler: MRE.ActionHandler<MRE.ButtonEventData>): this;
+	public on(event: 'dropDown', handler: MRE.ActionHandler): this;
+	public on(event: 'dropHover', handler: MRE.ActionHandler): this;
+	public on(event: 'dropUp', handler: MRE.ActionHandler): this;
+	public on(event: 'click' | 'dropDown' | 'dropHover' | 'dropUp', handler: (...args: any[]) => void) {
+		return super.on(event, handler);
 	}
 
-	public offClick(handler: MRE.ActionHandler<MRE.ButtonEventData>) {
-		this.clickHandlers.delete(handler);
+	public off(event: 'click', handler: MRE.ActionHandler<MRE.ButtonEventData>): this;
+	public off(event: 'dropDown', handler: MRE.ActionHandler): this;
+	public off(event: 'dropHover', handler: MRE.ActionHandler): this;
+	public off(event: 'dropUp', handler: MRE.ActionHandler): this;
+	public off(event: 'click' | 'dropDown' | 'dropHover' | 'dropUp', handler: (...args: any[]) => void) {
+		return super.off(event, handler);
 	}
 
 	private onHover(user: MRE.User) {
-		if (!this._model) return;
+		if (!this.model) return;
 
-		// TODO: make this a material tint instead of scale (bugged)
-		if (this.clickHandlers.size > 0) {
-			this._model.transform.local.scale = this.hoverScale;
+		if (this.listenerCount('click') > 0) {
+			this.model.transform.local.scale = this.hoverScale;
 		} else {
-			this._model.transform.local.scale = this.ogScale;
+			this.model.transform.local.scale = this.ogScale;
 		}
 	}
 
 	private offHover(user: MRE.User) {
-		if (!this._model) return;
+		if (!this.model) return;
 
-		this._model.transform.local.scale = this.ogScale;
-	}
-
-	private internalOnClick(user: MRE.User, data: MRE.ButtonEventData) {
-		for (const handler of this.clickHandlers) {
-			handler(user, data);
-		}
+		this.model.transform.local.scale = this.ogScale;
 	}
 }

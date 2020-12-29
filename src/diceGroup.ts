@@ -28,6 +28,8 @@ export class DiceGroup {
 	public set dropHighest(value) {
 		if (this.hasRollResults) {
 			throw new Error("Cannot change dice after rolling");
+		} else if (value >= this.count - this.dropLowest) {
+			throw new Error("Cannot drop all dice");
 		}
 		this._dropHighest = value;
 	}
@@ -38,6 +40,8 @@ export class DiceGroup {
 	public set dropLowest(value) {
 		if (this.hasRollResults) {
 			throw new Error("Cannot change dice after rolling");
+		} else if (value >= this.count - this.dropHighest) {
+			throw new Error("Cannot drop all dice");
 		}
 		this._dropLowest = value;
 	}

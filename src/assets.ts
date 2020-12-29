@@ -13,16 +13,15 @@ const assetMap: { [name: string]: string | AssetBuilder } = {
 	'd6': './dice.glb',
 	'd8': './dice.glb',
 	'd10': './dice.glb',
-	'd10mat': './dice.glb',
 	'd12': './dice.glb',
 	'd20': './dice.glb',
-	'd100mat': {
-		// create a copy of the d10 material for the d100
-		container: './dice.glb',
-		builder: async (ac) => {
-			const d10mat = (await getAsset(ac.context, 'd10mat')).material;
-			ac.createMaterial('d100mat', d10mat.toJSON().material);
-		}
+	'leftHandle': {
+		container: './dropHandles.glb',
+		builder: ac => ac.loadGltf('./dropHandles.glb', 'box').then()
+	},
+	'rightHandle': {
+		container: './dropHandles.glb',
+		builder: ac => ac.loadGltf('./dropHandles.glb', 'box').then()
 	}
 };
 
@@ -100,6 +99,11 @@ export async function getAsset(context: MRE.Context, name: string): Promise<MRE.
 	}
 
 	return asset;
+}
+
+/** Get multiple assets in parallel. */
+export function getAssets(context: MRE.Context, ...assetNames: string[]): Promise<MRE.Asset[]> {
+	return Promise.all(assetNames.map(name => getAsset(context, name)));
 }
 
 export function cleanUpSession(context: MRE.Context) {
