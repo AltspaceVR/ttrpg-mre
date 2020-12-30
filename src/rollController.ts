@@ -4,6 +4,7 @@ import { Die, DieType } from './die';
 import { DiceGroup } from './diceGroup';
 import { DropController } from './dropController';
 import App from './app';
+import { getAsset } from './assets';
 
 /** Display, form, and roll a collection of dice. */
 export class RollController {
@@ -21,18 +22,27 @@ export class RollController {
 	private dieSelectorRoot: MRE.Actor;
 	private dieSelectors: Die[] = [];
 
-	public constructor(private app: App, actorProps?: Partial<MRE.ActorLike>) {
+	public constructor(private app: App, private user: MRE.User, actorProps?: Partial<MRE.ActorLike>) {
 		this._root = MRE.Actor.Create(this.app.context, { actor: {
 			name: "RollManager",
+			exclusiveToUser: this.user.id,
+			grabbable: true,
 			...actorProps
 		}});
+
+		getAsset(this.app.context, 'grabHandle').then(handleAsset => {
+			this.root.appearance.mesh = handleAsset.mesh;
+			this.root.setCollider(MRE.ColliderType.Auto, false);
+		});
+
 		this.buildDiceSelection();
 	}
 
 	private buildDiceSelection() {
 		this.dieSelectorRoot = MRE.Actor.Create(this.app.context, { actor: {
 			name: "DieSelectorRoot",
-			parentId: this.root.id
+			parentId: this.root.id,
+			transform: { local: { position: { y: 0.1 }}}
 		}});
 
 		const selectorLayout = new MRE.PlanarGridLayout(this.dieSelectorRoot,
@@ -68,7 +78,7 @@ export class RollController {
 			this.rollRoot = MRE.Actor.Create(this.app.context, { actor: {
 				name: "ActiveRollRoot",
 				parentId: this.root.id,
-				transform: { local: { position: { y: 0.1 }}}
+				transform: { local: { position: { y: 0.2 }}}
 			}});
 		}
 

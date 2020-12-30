@@ -50,7 +50,7 @@ export class DropController {
 			throw new Error(`Cannot add odd dice to a group of ${this.diceGroup.type}s`);
 		}
 
-		this.dice.push(...dice.filter(d => this.dice.includes(d)));
+		this.dice.push(...dice.filter(d => !this.dice.includes(d)));
 	}
 
 	public update() {

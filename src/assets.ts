@@ -15,6 +15,10 @@ const assetMap: { [name: string]: string | AssetBuilder } = {
 	'd10': './dice.glb',
 	'd12': './dice.glb',
 	'd20': './dice.glb',
+	'Dicebag': {
+		container: './dicebag.glb',
+		builder: ac => ac.loadGltf('./dicebag.glb', 'box').then()
+	},
 	'leftHandle': {
 		container: './dropHandles.glb',
 		builder: ac => ac.loadGltf('./dropHandles.glb', 'box').then()
@@ -22,6 +26,9 @@ const assetMap: { [name: string]: string | AssetBuilder } = {
 	'rightHandle': {
 		container: './dropHandles.glb',
 		builder: ac => ac.loadGltf('./dropHandles.glb', 'box').then()
+	},
+	'grabHandle': {
+		builder: ac => { ac.createCylinderMesh('grabHandle', 0.1, 0.01, 'y'); return Promise.resolve(); }
 	}
 };
 
