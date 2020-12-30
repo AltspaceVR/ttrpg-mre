@@ -124,6 +124,10 @@ export class Die extends EventEmitter {
 		.catch(err => MRE.log.error('app', err));
 	}
 
+	public destroy() {
+		this.root.destroy();
+	}
+
 	public on(event: 'click', handler: MRE.ActionHandler<MRE.ButtonEventData>): this;
 	public on(event: 'dropDown', handler: MRE.ActionHandler): this;
 	public on(event: 'dropHover', handler: MRE.ActionHandler): this;

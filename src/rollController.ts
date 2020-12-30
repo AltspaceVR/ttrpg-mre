@@ -5,6 +5,7 @@ import { DiceGroup } from './diceGroup';
 import { DropController } from './dropController';
 import App from './app';
 import { getAsset } from './assets';
+import { RollView } from './rollView';
 
 /** Display, form, and roll a collection of dice. */
 export class RollController {
@@ -13,14 +14,11 @@ export class RollController {
 
 	private activeRoll: DiceGroup[] = [];
 
-	private rollRoot: MRE.Actor;
-	private rollDisplay: Die[] = [];
 	private dropControllers = new Map<DieType, DropController>();
-	private rollResults: MRE.Actor;
-	private rollButton: MRE.Actor;
 
 	private dieSelectorRoot: MRE.Actor;
 	private dieSelectors: Die[] = [];
+	private rollView: RollView;
 
 	public constructor(private app: App, private user: MRE.User, actorProps?: Partial<MRE.ActorLike>) {
 		this._root = MRE.Actor.Create(this.app.context, { actor: {
@@ -36,6 +34,37 @@ export class RollController {
 		});
 
 		this.buildDiceSelection();
+
+		this.rollView = new RollView(this.app, this.activeRoll, {
+			parentId: this.root.id,
+			transform: { local: { position: { y: 0.2 }}}
+		});
+
+		this.rollView.on('refreshed', () => {
+			for (const dc of this.dropControllers.values()) {
+				dc.update();
+			}
+		});
+
+		this.rollView.on('labelPressed', () => this.rollButtonPressed());
+
+		this.rollView.on('diePressed', (user, dieIndex) => {
+			const dg = this.activeRoll.find(dg => dg.type === this.rollView.rollDisplay[dieIndex].type);
+			if (dg.hasRollResults) {
+				this.rollButtonPressed();
+			} else {
+				dg.count = Math.max(0, dg.count - 1);
+				this.refresh();
+			}
+		});
+	}
+
+	public destroy() {
+		this.rollView.destroy();
+		for (const d of this.dieSelectors) {
+			d.destroy();
+		}
+		this.root.destroy();
 	}
 
 	private buildDiceSelection() {
@@ -63,6 +92,10 @@ export class RollController {
 	}
 
 	private addDie(die: DieType) {
+		if (this.activeRoll.length > 0 && this.activeRoll[0].hasRollResults) {
+			return;
+		}
+
 		let dg = this.activeRoll.find(dg => dg.type === die);
 		if (!dg) {
 			this.activeRoll.push(dg = new DiceGroup(die, 1, 0, 0));
@@ -70,10 +103,30 @@ export class RollController {
 			dg.count++;
 		}
 
-		this.refreshActiveRollDisplay();
+		this.refresh();
 	}
 
-	private refreshActiveRollDisplay() {
+	private refresh() {
+		for (const dg of this.activeRoll) {
+			if (dg.type !== DieType.D1 && !this.dropControllers.has(dg.type)) {
+				this.dropControllers.set(dg.type, new DropController(this.app, dg, this.rollView.root));
+			} else if (dg.count === 0 && this.dropControllers.has(dg.type)) {
+				this.dropControllers.get(dg.type).destroy();
+				this.dropControllers.delete(dg.type);
+			}
+		}
+
+		this.rollView.refresh();
+		this.rollView.labelText = (this.activeRoll.length > 0 && this.activeRoll[0].hasRollResults) ? "RESET" : "ROLL";
+
+		for (const d of this.rollView.rollDisplay) {
+			if (d.type !== DieType.D1) {
+				this.dropControllers.get(d.type).addDice(d);
+			}
+		}
+	}
+
+	/*private refreshActiveRollDisplay() {
 		if (!this.rollRoot) {
 			this.rollRoot = MRE.Actor.Create(this.app.context, { actor: {
 				name: "ActiveRollRoot",
@@ -130,7 +183,6 @@ export class RollController {
 
 		let x = 1;
 
-		this.activeRoll.sort(sortDiceGroups);
 		for (const dg of this.activeRoll) {
 			if (dg.type !== DieType.D1 && !this.dropControllers.has(dg.type)) {
 				this.dropControllers.set(dg.type, new DropController(this.app, dg, this.rollRoot));
@@ -188,43 +240,24 @@ export class RollController {
 		for (const d of oldDice) {
 			d.root.destroy();
 		}
-	}
+	}*/
 
 	private rollButtonPressed() {
-		if (this.activeRoll.every(dg => !dg.hasRollResults)) {
+		if (this.activeRoll.length > 0 && !this.activeRoll[0].hasRollResults) {
 			// roll the dice
-			const dice = [...this.rollDisplay];
 			for (const dg of this.activeRoll) {
 				dg.roll();
-				for (let i = 0; i < dg.results.length; i++) {
-					const d = dice.splice(0, 1)[0];
-					if (dg.type === DieType.D1) {
-						d.text = '+' + dg.count;
-						d.textColor = MRE.Color3.White();
-						break;
-					} else {
-						d.text = dg.results[i].toString();
-						d.textColor = dg.contributingResults.includes(i) ? MRE.Color3.White() : MRE.Color3.Gray();
-					}
-				}
 			}
-			this.app.history.addRollToHistory(this.user, this.activeRoll);
-		} else {
-			this.activeRoll = [];
+			this.app.history.addRollToHistory(this.user, [...this.activeRoll]);
+		} else if (this.activeRoll.length > 0) {
+			for (const dc of this.dropControllers.values()) {
+				dc.destroy();
+			}
+			this.dropControllers.clear();
+			this.activeRoll.splice(0, this.activeRoll.length);
 		}
 
-		this.refreshActiveRollDisplay();
+		this.refresh();
 	}
 }
 
-function sortDiceGroups(a: DiceGroup, b: DiceGroup) {
-	const rankings = Object.values(DieType);
-	const aRank = rankings.indexOf(a.type), bRank = rankings.indexOf(b.type);
-	if (aRank < bRank) {
-		return -1;
-	} else if (aRank > bRank) {
-		return 1;
-	} else {
-		return 0;
-	}
-}

@@ -9,8 +9,7 @@ process.on('SIGTERM', () => process.exit(0));
 process.on('SIGABRT', () => process.exit(0));
 
 const webhost = new MRE.WebHost({
-	baseDir: resolve(__dirname, '..', 'public'),
-	optionalPermissions: [ MRE.Permissions.UserTracking, MRE.Permissions.UserInteraction ]
+	baseDir: resolve(__dirname, '..', 'public')
 });
 
 webhost.adapter.onConnection((context, params) => new App(context, params));
