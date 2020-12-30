@@ -1,19 +1,20 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 import { getAsset, cleanUpSession as cleanUpAssets } from './assets';
-import { Die, DieType } from './die';
 import { RollController } from './rollController';
 
 export default class App {
 	private bag: MRE.Actor;
 	private rollers = new Map<MRE.Guid, RollController>();
 
-	public rollManager: RollController;
-
 	constructor(public context: MRE.Context, public params: MRE.ParameterSet) {
-		context.onStarted(() => this.onStarted());
-		context.onUserJoined(user => this.onUserJoined(user));
-		context.onUserLeft(user => this.onUserLeft(user));
-		context.onStopped(() => this.onStopped());
+		context.onUserLeft(u => {
+			if (this.rollers.has(u.id)) {
+				const rc = this.rollers.get(u.id);
+				rc.root.destroy();
+				this.rollers.delete(u.id);
+			}
+		})
+		context.onStopped(() => cleanUpAssets(this.context));
 
 		getAsset(this.context, 'Dicebag').then(bagAsset => {
 			this.bag = MRE.Actor.CreateFromPrefab(this.context, {
@@ -33,21 +34,5 @@ export default class App {
 				}
 			});
 		});
-	}
-
-	private async onStarted() {
-
-	}
-
-	private onStopped() {
-		cleanUpAssets(this.context);
-	}
-
-	private onUserJoined(user: MRE.User) {
-
-	}
-
-	private onUserLeft(user: MRE.User) {
-
 	}
 }
