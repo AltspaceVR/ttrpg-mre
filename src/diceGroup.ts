@@ -127,6 +127,13 @@ export class DiceGroup {
 	}
 
 	public toString(): string {
-		return this.count + this.type;
+		let str = this.type === DieType.D1 ? this.count.toString() : this.count + this.type;
+		if (this.dropLowest > 0) {
+			str += "dl" + this.dropLowest;
+		}
+		if (this.dropHighest > 0) {
+			str += "dh" + this.dropHighest;
+		}
+		return str;
 	}
 }

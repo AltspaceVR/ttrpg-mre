@@ -208,9 +208,8 @@ export class RollController {
 					}
 				}
 			}
+			this.app.history.addRollToHistory(this.user, this.activeRoll);
 		} else {
-			//this.rollHistory.push(this.activeRoll);
-			//this.activeRoll = this.activeRoll.map(dg => new DiceGroup(dg));
 			this.activeRoll = [];
 		}
 
