@@ -12,6 +12,8 @@ export class RollController {
 	private _root: MRE.Actor;
 	public get root() { return this._root; }
 
+	public closeButton: MRE.Actor;
+
 	private activeRoll: DiceGroup[] = [];
 
 	private dropControllers = new Map<DieType, DropController>();
@@ -64,6 +66,7 @@ export class RollController {
 		for (const d of this.dieSelectors) {
 			d.destroy();
 		}
+		this.closeButton.destroy();
 		this.root.destroy();
 	}
 

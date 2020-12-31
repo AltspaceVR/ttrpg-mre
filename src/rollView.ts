@@ -141,7 +141,7 @@ export class RollView extends EventEmitter {
 		Promise.all(this.rollDisplay.map(d => d.root.created())).then(() => {
 			layout.applyLayout();
 			this.emit('refreshed');
-		});
+		}).catch(err => MRE.log.error('app', err));
 
 		for (const d of oldDice) {
 			d.destroy();

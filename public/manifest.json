@@ -2,6 +2,6 @@
 	"name": "TTRPG Dice Roller",
 	"author": "Steven Vergenz <steven.vergenz@microsoft.com>",
 	"license": "GPL-3.0-or-later",
-	"repository": "https://github.com/AltspaceVR/ttrpg-mre",
+	"repositoryUrl": "https://github.com/AltspaceVR/ttrpg-mre",
 	"optionalPermissions": [ "user-tracking", "user-interaction" ]
 }

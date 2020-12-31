@@ -19,7 +19,7 @@ export default class App {
 		context.onStopped(() => cleanUpAssets(this.context));
 
 		this.history = new RollHistory(this, {
-			transform: { local: { position: { y: 0.1, z: 0.1 }}}
+			transform: { local: { position: { y: 0.15, z: 0.1 }}}
 		});
 
 		getAsset(this.context, 'Dicebag').then(bagAsset => {
@@ -34,9 +34,32 @@ export default class App {
 
 			this.bag.setBehavior(MRE.ButtonBehavior).onClick(user => {
 				if (!this.rollers.has(user.id)) {
-					this.rollers.set(user.id, new RollController(this, user, {
+					const rc = new RollController(this, user, {
 						transform: { local: { position: { y: 0.15 }}}
-					}));
+					});
+					this.rollers.set(user.id, rc);
+
+					rc.closeButton = MRE.Actor.Create(this.context, { actor: {
+						name: "DismissButton",
+						parentId: this.bag.id,
+						exclusiveToUser: user.id,
+						transform: { local: { position: { x: 1.3, y: 0.25 }}},
+						text: {
+							contents: "DISMISS DICE",
+							height: 0.5,
+							anchor: MRE.TextAnchorLocation.MiddleLeft,
+							justify: MRE.TextJustify.Left
+						},
+						collider: { geometry: {
+							shape: MRE.ColliderType.Box,
+							size: { x: 3.5, y: 1, z: 0.1 },
+							center: { x: 1.75, y: 0, z: 0 }
+						}}
+					}});
+					rc.closeButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', () => {
+						this.rollers.delete(user.id);
+						rc.destroy();
+					});
 				}
 			});
 		});

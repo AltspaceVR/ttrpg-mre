@@ -8,6 +8,10 @@ process.on('unhandledRejection', ex => MRE.log.error('app', "Unhandled rejection
 process.on('SIGTERM', () => process.exit(0));
 process.on('SIGABRT', () => process.exit(0));
 
+if (process.env.PRODUCTION) {
+	MRE.log.disable('app', 'debug');
+}
+
 const webhost = new MRE.WebHost({
 	baseDir: resolve(__dirname, '..', 'public')
 });

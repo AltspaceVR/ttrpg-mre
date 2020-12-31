@@ -91,7 +91,7 @@ export class DropController {
 		for (let i = 0; i < this.dice.length; i++) {
 			const d = this.dice[i];
 			const dist = MRE.Vector3.Distance(d.root.transform.local.position, handle.transform.local.position);
-			MRE.log.info('app',
+			MRE.log.debug('app',
 				`Die ${i}: ${d.root.transform.local.position} to ${handle.transform.local.position} is ${dist}`);
 			if (dist < minDistance) {
 				minDistance = dist;
@@ -99,7 +99,7 @@ export class DropController {
 				closestDieIndex = i;
 			}
 		}
-		MRE.log.info('app', `Closest die: ${closestDieIndex}`);
+		MRE.log.debug('app', `Closest die: ${closestDieIndex}`);
 
 		try {
 			// set drop-highest value
