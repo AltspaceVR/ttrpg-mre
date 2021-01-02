@@ -67,7 +67,18 @@ export class RollView extends EventEmitter {
 					geometry: { shape: MRE.ColliderType.Box, size: { x: 0.2, y: 0.1, z: 0.01 }}
 				}
 			}});
-			this.rollButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', user => this.emit('labelPressed', user));
+			this.rollButton.setBehavior(MRE.ButtonBehavior)
+				.onHover('enter', () => {
+					if (this.listenerCount('labelPressed') > 0) {
+						this.rollButton.transform.local.scale.set(1.1, 1.1, 1.1);
+					} else {
+						this.rollButton.transform.local.scale.set(1, 1, 1);
+					}
+				})
+				.onHover('exit', () => {
+					this.rollButton.transform.local.scale.set(1, 1, 1);
+				})
+				.onButton('pressed', user => this.emit('labelPressed', user));
 		} else {
 			this.rollButton.text.enabled = this.activeRoll.length > 0;
 		}
@@ -115,11 +126,15 @@ export class RollView extends EventEmitter {
 						app: this.app, type: dg.type, text: dg.type,
 						actor: { parentId: this.root.id }
 					});
-					const di = i;
-					// remove die, or reset the roll on click
-					d.on('click', user => this.emit('diePressed', user, di));
 				} else {
 					break;
+				}
+
+				if (d.listenerCount('click') > 0) {
+					d.off('click', this.getDieClickedHandler(i));
+				}
+				if (this.listenerCount('diePressed') > 0) {
+					d.on('click', this.getDieClickedHandler(i));
 				}
 
 				if (dg.type === DieType.D1) {
@@ -155,18 +170,40 @@ export class RollView extends EventEmitter {
 		this.root.destroy();
 	}
 
+	private dieClickedHandlers = new Map<number, (user: MRE.User) => void>();
+	private getDieClickedHandler(dieIndex: number) {
+		if (!this.dieClickedHandlers.has(dieIndex)) {
+			this.dieClickedHandlers.set(dieIndex,
+				((user: MRE.User) => this.emit('diePressed', user, dieIndex)).bind(this));
+		}
+
+		return this.dieClickedHandlers.get(dieIndex);
+	}
+
 	public on(event: 'labelPressed', listener: MRE.ActionHandler): this;
 	public on(event: 'diePressed', listener: MRE.ActionHandler<number>): this;
 	public on(event: 'refreshed', listener: () => void): this;
 	public on(event: 'labelPressed' | 'diePressed' | 'refreshed', listener: (...args: any[]) => void): this {
-		return super.on(event, listener);
+		super.on(event, listener);
+		if (this.listenerCount('diePressed') === 1) {
+			for (let i = 0; i < this.rollDisplay.length; i++) {
+				this.rollDisplay[i].on('click', this.getDieClickedHandler(i));
+			}
+		}
+		return this;
 	}
 
 	public off(event: 'labelPressed', listener: MRE.ActionHandler): this;
 	public off(event: 'diePressed', listener: MRE.ActionHandler<number>): this;
 	public off(event: 'refreshed', listener: () => void): this;
 	public off(event: 'labelPressed' | 'diePressed' | 'refreshed', listener: (...args: any[]) => void): this {
-		return super.off(event, listener);
+		super.off(event, listener);
+		if (this.listenerCount('diePressed') === 0) {
+			for (let i = 0; i < this.rollDisplay.length; i++) {
+				this.rollDisplay[i].off('click', this.getDieClickedHandler(i));
+			}
+		}
+		return this;
 	}
 }
 
