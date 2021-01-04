@@ -8,7 +8,7 @@
     "start": "node ."
   },
   "author": "Steven Vergenz",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "dependencies": {
     "@microsoft/mixed-reality-extension-sdk": "file:microsoft-mixed-reality-extension-sdk-0.20.0.tgz"
   },
