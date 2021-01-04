@@ -5,6 +5,6 @@
  * @param maximumHeight Do not let the text be any taller than this.
  */
 export function textHeightForWidth(text: string, desiredWidth: number, maximumHeight = 1) {
-	const heightWidthRatio = 1.4; // assumed
+	const heightWidthRatio = 1.3; // assumed
 	return Math.min(maximumHeight, heightWidthRatio * desiredWidth / (text?.length ?? 1));
 }

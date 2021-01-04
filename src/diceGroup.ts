@@ -137,3 +137,39 @@ export class DiceGroup {
 		return str;
 	}
 }
+
+export class Dice {
+	public groups: DiceGroup[];
+
+	public get count(): number {
+		return this.groups.reduce((sum, dg) => sum + (dg.type === DieType.D1 ? 1 : dg.count), 0);
+	}
+
+	public get hasRollResults(): boolean {
+		return this.groups.length > 0 && this.groups.every(dg => dg.hasRollResults);
+	}
+
+	public get rollTotal(): number {
+		return this.groups.reduce((sum, dg) => sum + dg.total, 0);
+	}
+
+	public constructor (groups: DiceGroup[] = []) {
+		this.groups = groups;
+	}
+
+	public get(type: DieType) {
+		return this.groups.find(dg => dg.type === type);
+	}
+
+	public clear() {
+		this.groups.splice(0, this.groups.length);
+	}
+
+	public clone() {
+		return new Dice([...this.groups]);
+	}
+
+	public toString() {
+		return this.groups.map(dg => dg.toString()).join(' + ');
+	}
+}

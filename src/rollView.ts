@@ -2,7 +2,7 @@ import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 import { EventEmitter } from 'events';
 
 import { Die, DieType } from './die';
-import { DiceGroup } from './diceGroup';
+import { Dice, DiceGroup } from './diceGroup';
 import App from './app';
 import { textHeightForWidth } from './utils';
 
@@ -39,7 +39,7 @@ export class RollView extends EventEmitter {
 		}
 	}
 
-	public constructor(private app: App, private activeRoll: DiceGroup[], actorProps?: Partial<MRE.ActorLike>) {
+	public constructor(private app: App, private activeRoll: Dice, actorProps?: Partial<MRE.ActorLike>) {
 		super();
 
 		this._root = MRE.Actor.Create(this.app.context, { actor: {
@@ -55,8 +55,9 @@ export class RollView extends EventEmitter {
 			this.rollButton = MRE.Actor.Create(this.app.context, { actor: {
 				name: "RollButton",
 				parentId: this.root.id,
+				transform: { local: { position: { z: -0.05 }}},
 				text: {
-					enabled: this.activeRoll.length > 0,
+					enabled: this.activeRoll.count > 0,
 					contents: this._labelText,
 					color: this._labelTextColor,
 					height: textHeightForWidth(this._labelText, 0.3, 0.05),
@@ -80,17 +81,17 @@ export class RollView extends EventEmitter {
 				})
 				.onButton('pressed', user => this.emit('labelPressed', user));
 		} else {
-			this.rollButton.text.enabled = this.activeRoll.length > 0;
+			this.rollButton.text.enabled = this.activeRoll.count > 0;
 		}
 
-		const rollTotal = this.activeRoll.reduce((sum, dg) => sum + (dg.hasRollResults ? dg.total : 0), 0);
 		if (!this.rollResults) {
 			this.rollResults = MRE.Actor.Create(this.app.context, { actor: {
 				name: "RollResults",
 				parentId: this.root.id,
+				transform: { local: { position: { z: -0.05 }}},
 				text: {
-					enabled: this.activeRoll.length > 0,
-					contents: rollTotal > 0 ? `= ${rollTotal}` : "= ??",
+					enabled: this.activeRoll.count > 0,
+					contents: this.activeRoll.rollTotal > 0 ? `= ${this.activeRoll.rollTotal}` : "= ??",
 					color: this._labelTextColor,
 					height: 0.05,
 					anchor: MRE.TextAnchorLocation.MiddleCenter,
@@ -98,8 +99,8 @@ export class RollView extends EventEmitter {
 				}
 			}});
 		} else {
-			this.rollResults.text.enabled = this.activeRoll.length > 0;
-			this.rollResults.text.contents = '= ' + (rollTotal > 0 ? rollTotal : "??");
+			this.rollResults.text.enabled = this.activeRoll.count > 0;
+			this.rollResults.text.contents = '= ' + (this.activeRoll.rollTotal > 0 ? this.activeRoll.rollTotal : "??");
 		}
 
 		const oldDice = this.rollDisplay;
@@ -111,8 +112,8 @@ export class RollView extends EventEmitter {
 
 		let nextColumn = 1;
 
-		this.activeRoll.sort(sortDiceGroups);
-		for (const dg of this.activeRoll) {
+		this.activeRoll.groups.sort(sortDiceGroups);
+		for (const dg of this.activeRoll.groups) {
 			for (let i = 0; i < dg.count; i++) {
 				const reusedDieIndex = oldDice.findIndex(d => d.type === dg.type);
 				let d: Die;

@@ -1,24 +1,30 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 
 import App from './app';
-import { DiceGroup } from './diceGroup';
+import { Dice, DiceGroup } from './diceGroup';
 import { RollView } from './rollView';
 
-const historyHighlight = new MRE.Color3(0xb9/0xff, 0x7f/0xff, 0xaf/0xff);
+const highlights = new Map<MRE.Guid, MRE.Color3>();
 
 class HistoryEntry {
 	public readonly timestamp: Date;
 	private rollView: RollView;
 
-	public constructor(public user: MRE.UserLike, public roll: DiceGroup[]) {
+	public constructor(public user: MRE.UserLike, public roll: Dice) {
 		this.timestamp = new Date();
+		if (!highlights.has(user.id)) {
+			highlights.set(user.id, new MRE.Color3(
+				(0x7f + 0x80 * Math.random()) / 0xff,
+				(0x7f + 0x80 * Math.random()) / 0xff,
+				(0x7f + 0x80 * Math.random()) / 0xff,
+			));
+		}
 	}
 
 	public toString() {
-		const total = this.roll.reduce((sum, dg) => sum + dg.total, 0);
-		const rollStr = this.roll.map(dg => dg.toString()).join(' + ');
-		return `<color ${historyHighlight.toHexString()}>${this.user.name}</color>` +
-			` rolled <color ${historyHighlight.toHexString()}>${total}</color> (${rollStr})`;
+		return `<color ${highlights.get(this.user.id).toHexString()}>${this.user.name}</color>` +
+			` rolled <color ${highlights.get(this.user.id).toHexString()}>${this.roll.rollTotal}</color>` +
+			` (${this.roll.toString()})`;
 	}
 
 	public toRollView(history: RollHistory): RollView {
@@ -33,7 +39,7 @@ class HistoryEntry {
 				transform: { local: { scale: { x: 0.7, y: 0.7, z: 0.7 }}}
 			});
 			this.rollView.labelText = this.user.name;
-			this.rollView.labelTextColor = historyHighlight;
+			this.rollView.labelTextColor = highlights.get(this.user.id);
 		}
 
 		return this.rollView;
@@ -60,8 +66,8 @@ export class RollHistory {
 		}});
 	}
 
-	public addRollToHistory(user: MRE.User, roll: DiceGroup[]) {
-		if (roll.some(dg => !dg.hasRollResults)) {
+	public addRollToHistory(user: MRE.User, roll: Dice) {
+		if (!roll.hasRollResults) {
 			throw new Error("Cannot add unrolled dice to history");
 		}
 
